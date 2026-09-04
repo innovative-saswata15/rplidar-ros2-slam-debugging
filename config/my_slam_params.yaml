@@ -1,0 +1,62 @@
+# slam_toolbox params — async online mapping
+#
+# This is the working version after debugging-journey.md Issues #9, #10, #12.
+# Two things about this file matter more than any individual value below:
+#
+#   1. Launch it with `ros2 run`, not `ros2 launch ... params_file:=...`, at
+#      least the first time on a new machine — the launch wrapper can silently
+#      swallow a YAML parsing error that `ros2 run` reports immediately.
+#      See Issue #10.
+#
+#         ros2 run slam_toolbox async_slam_toolbox_node --ros-args --params-file my_slam_params.yaml
+#
+#   2. After every relaunch, confirm the values actually took effect —
+#      don't trust that editing this file and restarting was enough:
+#
+#         ros2 param get /slam_toolbox base_frame
+#         ros2 param get /slam_toolbox odom_frame
+#
+slam_toolbox:
+  ros__parameters:
+
+    # --- Frame configuration ---
+    # This rig has no wheel encoders, so `odom` is published by a static
+    # (identity) transform rather than real odometry — see README's
+    # "Current Status & Next Steps". Critically, odom_frame and base_frame
+    # must be DIFFERENT frame names even though the transform between them is
+    # currently identity: making them the same frame breaks motion-distance
+    # gating downstream (Issue #12), because a frame's transform to itself is
+    # always zero, so slam_toolbox would see "no movement" no matter how far
+    # the sensor physically travels.
+    odom_frame: odom
+    map_frame: map
+    base_frame: laser          # this rig's only real frame — no base_footprint exists (Issue #10, false lead #3)
+    scan_topic: /scan
+
+    # --- Mode ---
+    mode: mapping               # vs. "localization" against a saved map
+
+    # --- Update / responsiveness ---
+    # Default was 5.0s, which felt sluggish for live viewing (Issue #11) —
+    # this is a deliberate throttle, not a bug, and 1.0s is a reasonable
+    # live-viewing tradeoff between responsiveness and compute load.
+    map_update_interval: 1.0
+
+    # How far the sensor must move before slam_toolbox bothers updating.
+    # These only work correctly once odom_frame != base_frame (Issue #12) —
+    # with an identity self-transform these thresholds can never be crossed
+    # at any value, including 0.0.
+    minimum_travel_distance: 0.2
+    minimum_travel_heading: 0.2
+
+    # --- Scan matching / solver (slam_toolbox defaults, kept explicit) ---
+    use_scan_matching: true
+    use_scan_barycenter: true
+    minimum_time_interval: 0.2
+    transform_publish_period: 0.02
+    transform_timeout: 0.2
+    tf_buffer_duration: 30.0
+    resolution: 0.05
+    max_laser_range: 12.0        # RPLIDAR A1 rated range
+    scan_buffer_size: 10
+    scan_buffer_maximum_scan_distance: 12.0

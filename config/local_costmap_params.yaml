@@ -1,0 +1,54 @@
+# nav2_costmap_2d params — rolling local costmap (live obstacle view, NOT the
+# persistent SLAM map — see debugging-journey.md Issue #13 for why these are
+# two different tools serving two different purposes).
+#
+# THE #1 THING THAT BIT US HERE (Issue #14): the top-level keys below must
+# match the node's real name/namespace EXACTLY, as reported by:
+#
+#     ros2 node list
+#
+# For a costmap node launched as `costmap` inside namespace `costmap`, that
+# real identity is `costmap.costmap` — so the top-level keys are
+# `costmap: costmap: ros__parameters:`, NOT `local_costmap: local_costmap:`
+# (which seemed more intuitive but was silently ignored, falling back to
+# compiled-in defaults — including a `base_link` frame that doesn't exist on
+# this rig — which is what produced the "Invalid frame ID base_link" error).
+#
+# This is also a LIFECYCLE node — after launching it, it starts INACTIVE and
+# does nothing until explicitly configured and activated:
+#
+#     ros2 lifecycle set /costmap/costmap configure
+#     ros2 lifecycle set /costmap/costmap activate
+#
+costmap:
+  costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 5.0
+      global_frame: odom
+      robot_base_frame: laser     # this rig's only real frame — see my_slam_params.yaml
+      use_sim_time: false
+      rolling_window: true
+      width: 6                    # meters
+      height: 6
+      resolution: 0.05
+      footprint: "[[0.1, 0.1], [0.1, -0.1], [-0.1, -0.1], [-0.1, 0.1]]"
+
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.3

@@ -1,0 +1,19 @@
+# ROS 2 workspace build artifacts (this repo documents the setup, not the built workspace)
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor/OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Bag files (large binary recordings — not meant to live in git)
+*.db3
+*.mcap
+rosbag2_*/
